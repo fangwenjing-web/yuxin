@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数智法眼·AI识案 - 国庆游园活动</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #0c1b33 0%, #2a3b5a 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #4fc3f7;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        .subtitle {
+            color: #bb86fc;
+            margin-bottom: 25px;
+        }
+        #start-screen, #game-screen, #success-screen {
+            transition: opacity 0.5s ease, transform 0.3s ease;
+        }
+        #game-screen, #success-screen {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        #game-screen.active, #success-screen.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .scenario {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            line-height: 1.6;
+            min-height: 60px;
+        }
+        .options {
+            display: grid;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(to right, #2196f3, #21cbf3);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .option-btn {
+            background: rgba(255, 255, 255, 0.1);
+            text-align: left;
+        }
+        .option-btn.correct { animation: flashGreen 1s forwards; }
+        .option-btn.incorrect { animation: flashRed 1s forwards; }
+        @keyframes flashGreen { to { background: linear-gradient(to right, #00c853, #64dd17); } }
+        @keyframes flashRed { to { background: linear-gradient(to right, #ff5252, #ff1744); } }
+        .feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: none;
+            white-space: pre-line; /* 保留换行符 */
+            text-align: left;
+        }
+        .progress {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b2ebf2;
+        }
+        .loading {
+            color: #4fc3f7;
+            margin: 20px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 开始界面 -->
+        <div id="start-screen">
+            <h1>数智法眼·AI识案</h1>
+            <p class="subtitle">连续答对3题，挑战成功！</p>
+            <button id="start-btn">开始挑战</button>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="game-screen">
+            <h2>案例辨析</h2>
+            <div class="loading" id="loading">加载题目中...</div>
+            <div class="scenario" id="scenario-text"></div>
+            <div class="options" id="options-container"></div>
+            <div class="feedback" id="feedback-text"></div>
+            <div class="progress" id="progress-text">进度: 0/3</div>
+        </div>
+
+        <!-- 成功界面 -->
+        <div id="success-screen">
+            <h1>🎉 挑战成功！ 🎉</h1>
+            <p>您已连续答对3题，展现了出色的数智法眼！</p>
+            <p>请向工作人员出示此界面，领取您的印章。</p>
+            <button id="restart-btn">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        // 题库：案例、选项、正确答案索引、解析
+        const questionBank = [
+            {
+                scenario: "某公司使用AI模型生成了一幅画作，并声称拥有其著作权。另一家公司未经许可使用了该画作。",
+                options: ["著作权法", "专利法", "商标法"],
+                correctIndex: 0,
+                explanation: "正确答案：著作权法。\n解析：此案例涉及AI生成物的版权归属问题，是当前著作权法领域的前沿争议。目前主流观点认为AI生成物不构成作品，但其生成过程若包含人的独创性选择与安排，则该部分可受著作权法保护。"
+            },
+            {
+                scenario: "用户在某平台注册时，未仔细阅读就勾选了“同意”长达数万字的用户协议。后因账号纠纷，平台援引协议中某苛刻条款。",
+                options: ["合同纠纷（格式条款）", "侵权责任", "消费者权益保护法"],
+                correctIndex: 0,
+                explanation: "正确答案：合同纠纷（格式条款）。\n解析：用户协议属于格式合同。根据《民法典》规定，提供格式条款的一方应尽到提示说明义务，未履行的对方可主张该条款不成为合同内容。这涉及格式条款的效力问题。"
+            },
+            {
+                scenario: "某智能音箱在日常使用中录制了用户的一段私人对话，并被上传到云端用于算法改进。",
+                options: ["个人信息保护法", "网络安全法", "刑法（侵犯公民个人信息罪）"],
+                correctIndex: 0,
+                explanation: "正确答案：个人信息保护法。\n解析：此行为首先违反了《个人信息保护法》中关于“告知-同意”的核心原则，未经用户明确同意收集、处理其个人敏感信息（语音）。同时也可能违反《网络安全法》的数据安全规定，情节严重可涉及刑事犯罪。"
+            },
+            {
+                scenario: "一款自动驾驶汽车在测试过程中，因算法决策失误撞伤了路人。",
+                options: ["产品责任", "交通肇事罪", "人工智能伦理与监管"],
+                correctIndex: 0,
+                explanation: "正确答案：产品责任。\n解析：目前法律框架下，自动驾驶汽车被视为“产品”。其造成的损害主要追究生产者（汽车制造商或算法提供者）的产品责任，适用无过错责任原则。同时也引发对AI伦理与专门立法的讨论。"
+            },
+            {
+                scenario: "李某利用爬虫技术抓取了某电商平台的大量商品数据和用户评价，用于自己公司的市场分析。",
+                options: ["反不正当竞争法", "网络安全法", "商业秘密"],
+                correctIndex: 0,
+                explanation: "正确答案：反不正当竞争法。\n解析：此行为很可能违反《反不正当竞争法》，构成“破坏他人网络产品或服务正常运行”或“非法使用他人商业数据”的不正当竞争行为。同时也可能违反《网络安全法》中关于数据安全的规定。"
+            }
+        ];
+
+        // 获取DOM元素
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const successScreen = document.getElementById('success-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const scenarioText = document.getElementById('scenario-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackText = document.getElementById('feedback-text');
+        const progressText = document.getElementById('progress-text');
+        const loadingIndicator = document.getElementById('loading');
+
+        // 游戏状态变量
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let consecutiveCorrect = 0;
+
+        // 初始化游戏
+        function initGame() {
+            // 显示加载状态
+            loadingIndicator.style.display = 'block';
+            scenarioText.textContent = '';
+            optionsContainer.innerHTML = '';
+            
+            // 随机抽取3个不重复的题目
+            currentQuestions = [...questionBank].sort(() => 0.5 - Math.random()).slice(0, 3);
+            currentQuestionIndex = 0;
+            consecutiveCorrect = 0;
+            
+            // 短暂延迟后显示题目，增强用户体验
+            setTimeout(() => {
+                loadingIndicator.style.display = 'none';
+                displayQuestion();
+                updateProgress();
+            }, 600);
+        }
+
+        // 显示当前题目
+        function displayQuestion() {
+            const currentQ = currentQuestions[currentQuestionIndex];
+            scenarioText.textContent = currentQ.scenario;
+            optionsContainer.innerHTML = '';
+            feedbackText.style.display = 'none';
+
+            currentQ.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option-btn');
+                button.addEventListener('click', () => checkAnswer(index));
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        // 检查答案
+        function checkAnswer(selectedIndex) {
+            const currentQ = currentQuestions[currentQuestionIndex];
+            const optionButtons = document.querySelectorAll('.option-btn');
+            const correctIndex = currentQ.correctIndex;
+
+            // 禁用所有按钮防止重复点击
+            optionButtons.forEach(btn => btn.disabled = true);
+
+            // 显示正确和错误答案的颜色反馈
+            optionButtons[correctIndex].classList.add('correct');
+            if (selectedIndex !== correctIndex) {
+                optionButtons[selectedIndex].classList.add('incorrect');
+                consecutiveCorrect = 0; // 答错重置连续计数
+            } else {
+                consecutiveCorrect++; // 答对增加连续计数
+            }
+
+            // 显示解析
+            feedbackText.textContent = currentQ.explanation;
+            feedbackText.style.display = 'block';
+
+            // 更新进度
+            updateProgress();
+
+            // 下一题或判断成功
+            setTimeout(() => {
+                if (consecutiveCorrect >= 3) {
+                    // 连续答对3题，挑战成功
+                    gameScreen.classList.remove('active');
+                    setTimeout(() => {
+                        gameScreen.style.display = 'none';
+                        successScreen.style.display = 'block';
+                        setTimeout(() => successScreen.classList.add('active'), 50);
+                    }, 500);
+                } else if (currentQuestionIndex < currentQuestions.length - 1) {
+                    // 还有题目，继续
+                    currentQuestionIndex++;
+                    displayQuestion();
+                } else {
+                    // 题目答完但未连续答对3题，重新挑战
+                    alert(`很遗憾！您未能连续答对3题。请重新挑战。`);
+                    resetGame();
+                }
+            }, 4000); // 显示解析4秒后自动下一题
+        }
+
+        // 更新进度显示
+        function updateProgress() {
+            progressText.textContent = `进度: ${consecutiveCorrect}/3`;
+        }
+
+        // 重置游戏到开始界面
+        function resetGame() {
+            gameScreen.classList.remove('active');
+            successScreen.classList.remove('active');
+            
+            setTimeout(() => {
+                gameScreen.style.display = 'none';
+                successScreen.style.display = 'none';
+                startScreen.style.display = 'block';
+            }, 500);
+        }
+
+        // 事件监听
+        startBtn.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            gameScreen.style.display = 'block';
+            setTimeout(() => gameScreen.classList.add('active'), 50);
+            initGame();
+        });
+
+        restartBtn.addEventListener('click', resetGame);
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('游戏加载完成，准备就绪');
+        });
+    </script>
+</body>
+</html>
